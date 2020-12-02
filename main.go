@@ -7,6 +7,7 @@ import (
 	"github.com/gobuffalo/packr/v2"
 	"github.com/jung-kurt/gofpdf"
 	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/valyala/fasttemplate"
 )
 
 func main() {
@@ -28,6 +29,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	templateBytes, err := box.Find("app.html")
+	if err != nil {
+		log.Fatal(err)
+	}
 	pdf.AddUTF8FontFromBytes("ArialTrue", "", arialBytes)
 	pdf.AddUTF8FontFromBytes("ArialTrue", "I", arialItalicBytes)
 	pdf.AddUTF8FontFromBytes("ArialTrue", "B", arialBoldBytes)
@@ -36,12 +41,16 @@ func main() {
 	pdf.AddPage()
 	pt := pdf.PointConvert(6)
 	v, _ := mem.VirtualMemory()
-	htmlStr := fmt.Sprintf("Total: %v, Free:%v, UsedPercent:%f%%\n", v.Total, v.Free, v.UsedPercent)
+	t := fasttemplate.New(string(templateBytes), "{{", "}}")
+	s := t.ExecuteString(map[string]interface{}{
+		"total":       fmt.Sprintf("%d", v.Total),
+		"free":        fmt.Sprintf("%d", v.Free),
+		"usedPercent": fmt.Sprintf("%f", v.UsedPercent),
+	})
 	_, lineHt := pdf.GetFontSize()
 	html := pdf.HTMLBasicNew()
-	html.Write(lineHt, `内存信息:`)
 	pdf.Ln(lineHt + pt)
-	html.Write(lineHt, htmlStr)
+	html.Write(lineHt, s)
 	err = pdf.OutputFileAndClose("mem-report.pdf")
 	if err != nil {
 		log.Fatalln("some wrong: ", err.Error())
