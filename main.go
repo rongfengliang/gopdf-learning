@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/gobuffalo/packr/v2"
 	"github.com/jung-kurt/gofpdf"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 func main() {
@@ -32,8 +34,15 @@ func main() {
 	pdf.AddUTF8FontFromBytes("NotoSansSC-Regular", "", notoSansBytes)
 	pdf.SetFont("NotoSansSC-Regular", "", 16)
 	pdf.AddPage()
-	pdf.Cell(40, 10, "Hello, world, 荣锋亮")
-	err = pdf.OutputFileAndClose("hello.pdf")
+	pt := pdf.PointConvert(6)
+	v, _ := mem.VirtualMemory()
+	htmlStr := fmt.Sprintf("Total: %v, Free:%v, UsedPercent:%f%%\n", v.Total, v.Free, v.UsedPercent)
+	_, lineHt := pdf.GetFontSize()
+	html := pdf.HTMLBasicNew()
+	html.Write(lineHt, `内存信息:`)
+	pdf.Ln(lineHt + pt)
+	html.Write(lineHt, htmlStr)
+	err = pdf.OutputFileAndClose("mem-report.pdf")
 	if err != nil {
 		log.Fatalln("some wrong: ", err.Error())
 	}
